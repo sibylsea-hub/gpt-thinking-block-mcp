@@ -11,7 +11,7 @@ Sometimes the final answer is not the only thing worth seeing. We also want to k
 
 This is more than placing text inside a polished frame. Giving the model an explicit working step before its final response creates room to track constraints, catch omissions, compare alternatives, and organize uncertainty. The thinking block becomes part of the current turn, so it can meaningfully shape the answer that follows while making the reasoning easier to inspect, steer, and refine.
 
-Choose `deep_think` for analytical work or `relational` for a natural first-person companion voice. Use `low` through `max` to control how much visible thinking the turn receives, or rewrite the token budgets entirely. The card is rendered through the MCP Apps UI model supported by compatible hosts, and its palette, borders, typography, badges, spacing, dark mode, and collapse behavior are all yours to customize.
+Choose `deep_think` for analytical work or `relational` for a natural first-person companion voice. Use `low`, `medium`, or `high` to control how much visible thinking the turn receives, or rewrite the token bands entirely. The card is rendered through the MCP Apps UI model supported by compatible hosts, and its palette, borders, typography, badges, spacing, dark mode, and collapse behavior are all yours to customize.
 
 > [!IMPORTANT]
 > This is a self-hosted product, not a shared hosted service. Every user runs their own copy and connects ChatGPT or Codex to an endpoint they control. No project-operated public MCP endpoint is provided.
@@ -34,14 +34,13 @@ Both styles are prompt-level defaults in the tool schema. You can rewrite them, 
 
 ## Effort levels
 
-| Effort | Soft target | Good for |
+| Effort | Approximate token band | Good for |
 |---|---:|---|
-| `low` | ~150 tokens | A quick visible check |
-| `medium` | ~600 tokens | Normal analysis |
-| `high` | ~2,000 tokens | Difficult decisions or research |
-| `max` | ~6,000 tokens | Long-form exploration |
+| `low` | up to ~500 tokens | A quick visible check |
+| `medium` | >700 to ~1,000 tokens | Normal analysis |
+| `high` | >1,200 to ~2,000 tokens | Difficult decisions or research |
 
-These are generation instructions, not hard server-side limits. See [Customizing length](#customizing-length) if you want different targets or enforcement.
+These are prompt-level target bands, not hard server-side limits. `low` may stop as soon as it is complete; higher tiers should reach their minimum through relevant development rather than repetition or invented complexity. See [Customizing length](#customizing-length) if you want different bands or server-side enforcement.
 
 ## Quick start
 
@@ -183,7 +182,7 @@ Keep the enum, descriptions, and widget label logic in sync.
 
 ### Customizing length
 
-Change the targets in the `effort` property description. They are currently soft targets. To enforce a hard ceiling, validate or truncate `thinking` in `handle()` and return a clear tool error rather than silently clipping content.
+Change the ranges in the `effort` property description. They are prompt-level targets; the server does not count or enforce tokens. To enforce a hard range, validate `thinking` in `handle()` and return a clear tool error rather than silently clipping content.
 
 ### Customizing the card
 

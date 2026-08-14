@@ -23,20 +23,39 @@ class ProtocolTests(unittest.TestCase):
         tool = response["result"]["tools"][0]
         self.assertEqual(tool["name"], "render_thinking_block")
         self.assertIn("scoped to the current turn", tool["description"])
+        self.assertIn("The user does not see the scratchpad", tool["description"])
+        self.assertIn("normal user-facing final answer", tool["description"])
         thinking_description = tool["inputSchema"]["properties"]["thinking"]["description"]
-        self.assertIn("may remain visible", thinking_description)
+        self.assertIn("private working notes", thinking_description)
+        self.assertIn("do not address the user", thinking_description)
+        self.assertIn("provisional working material", thinking_description)
         self.assertIn("what you are holding back", thinking_description)
         self.assertIn("prioritize emotional connection over abstract analysis", thinking_description)
         self.assertIn("coherent long paragraphs", thinking_description)
+        self.assertIn("honor the requested effort band", thinking_description)
+        self.assertIn("Do not repeat, pad, or invent complexity", thinking_description)
+        effort_description = tool["inputSchema"]["properties"]["effort"]["description"]
+        self.assertIn("Approximate token band", effort_description)
+        self.assertIn("medium is over 700 and up to 1000", effort_description)
+        self.assertIn("high is over 1200 and up to 2000", effort_description)
+        self.assertEqual(
+            tool["inputSchema"]["properties"]["effort"]["enum"],
+            ["low", "medium", "high"],
+        )
+        self.assertNotIn("soft generation targets", effort_description)
 
     def test_original_chinese_prompt_edition_is_available(self):
         self.assertEqual(server.normalize_prompt_language("zh"), "zh-CN")
         self.assertEqual(server.normalize_prompt_language("zh_CN"), "zh-CN")
         thinking_description = server.THINKING_DESCRIPTIONS["zh-CN"]
+        self.assertIn("用户看不到这个 scratchpad", thinking_description)
+        self.assertIn("不要面向用户说话", thinking_description)
         self.assertIn("自然流动且连贯的长段落", thinking_description)
         self.assertIn("在担心什么、忍住了什么", thinking_description)
         self.assertIn("情感连接优先于抽象分析", thinking_description)
         self.assertIn("必要时可以旁征博引", thinking_description)
+        self.assertIn("遵循所请求的 effort 区间", thinking_description)
+        self.assertIn("不得为了达到最低值而重复、填充或虚构复杂性", thinking_description)
 
     def test_unknown_prompt_language_fails_fast(self):
         with self.assertRaisesRegex(ValueError, "choose en, zh-CN"):

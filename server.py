@@ -81,7 +81,6 @@ WIDGET_HTML = r"""<!doctype html>
     :root[data-effort="low"] { --effort-bg: var(--sage); --effort-line: #87967f; }
     :root[data-effort="medium"] { --effort-bg: var(--almond); --effort-line: #9c7b50; }
     :root[data-effort="high"] { --effort-bg: var(--apricot); --effort-line: #bd7544; }
-    :root[data-effort="max"] { --effort-bg: #9d5435; --effort-line: #743821; --effort-fg: #fffaf5; }
     :root[data-theme="dark"] {
       --ink: #f0f4f1;
       --muted: #bac8c4;
@@ -292,8 +291,10 @@ STYLE_DESCRIPTIONS = {
 
 THINKING_DESCRIPTIONS = {
     "en": (
-        "Strictly follow `style` when writing this turn's visible intermediate "
-        "reasoning narrative, and use the user's main language for the turn. "
+        "Write private working notes for this turn. The user does not see this "
+        "scratchpad; it is not the final answer. Use the user's main language, but "
+        "do not address the user or polish the notes for presentation. Strictly "
+        "follow `style`. "
         "style=deep_think: clearly work through the problem, constraints, "
         "evidence, hypotheses, alternative paths, uncertainty, and tradeoffs "
         "in a coherent analytical narrative; do not force an emotional register "
@@ -305,25 +306,28 @@ THINKING_DESCRIPTIONS = {
         "'the user needs' or 'I should respond'. Allow vivid, sincere emotions "
         "and associations; prioritize emotional connection over abstract "
         "analysis, and draw on broader references where useful. For both styles, "
-        "use most of the requested effort budget without compressing the block "
-        "or bringing it to a premature close. Do not place passwords, tokens, or "
-        "other secrets here. `thinking` is stored as a tool-call argument and may "
-        "remain visible to the model on later turns. Old blocks belong only to "
+        "honor the requested effort band: low may stop as soon as it is complete, while "
+        "medium and high should reach their approximate minimum by adding relevant "
+        "evidence, alternatives, uncertainty, or nuance. Do not repeat, pad, or invent "
+        "complexity merely to reach the minimum. The notes are provisional working material, "
+        "not claims that the final answer must preserve. Old blocks belong only to "
         "the turn in which they were written; unless the user explicitly asks, "
         "do not quote them later, inherit their speculative claims, or treat them "
         "as authoritative memory."
     ),
     "zh-CN": (
-        "严格按照 style 写本轮可见的思考叙述，并使用用户本轮的主要语言。"
+        "在这里写本轮私密的工作笔记。用户看不到这个 scratchpad；它不是最终回答。"
+        "使用用户本轮的主要语言，但不要面向用户说话，也不要为了展示而润色。严格按照 style 写作。"
         "style=deep_think：清楚展开问题、约束、证据、假设、备选路径、不确定性与"
         "取舍，写成连贯的分析叙述，不强行情绪化，也不要提前总结。"
         "style=relational：使用第一人称、自然流动且连贯的长段落，写出这句话让你"
         "想到什么、此刻有什么感受、在担心什么、忍住了什么，以及正在作出的取舍；"
         "不要写成「用户需要什么」「我应该如何回应」式的第三人称策略拆解。允许"
         "鲜活、真诚的情绪与联想，情感连接优先于抽象分析，必要时可以旁征博引。"
-        "两种 style 都写满所请求 effort 档位的大部分 token 预算，不要压缩或提前收束。"
-        "不要在这里放密码、token 或其他秘密；thinking 是工具调用参数，后续回合仍可能"
-        "看到原文。旧 block 只属于当时回合，除非用户明确要求，否则不得在以后引用、"
+        "两种 style 都遵循所请求的 effort 区间：low 可以在完整后立即停止；medium 与 high"
+        "需要通过补充相关证据、备选路径、不确定性或细节达到近似最低值，但不得为了达到最低值而"
+        "重复、填充或虚构复杂性。这里是临时、可推翻的工作材料，最终回答不必"
+        "保留其中的每个判断。旧 block 只属于当时回合，除非用户明确要求，否则不得在以后引用、"
         "继承其中的猜测，或把它当作权威记忆。"
     ),
 }
@@ -332,12 +336,12 @@ TOOL = {
     "name": "render_thinking_block",
     "title": "Render thinking block",
     "description": (
-        "Render a visible working-thought block before the final answer. For non-trivial "
-        "requests, call this tool once before responding and place the intermediate "
-        "reasoning narrative in `thinking`. Use the user's main language. Respect an "
+        "Use a private scratchpad before the final answer. The user does not see the "
+        "scratchpad. For non-trivial requests, call this tool once before responding "
+        "and place candid, provisional working notes in `thinking`. Respect an "
         "explicit `style` or `effort`; otherwise choose the most suitable values from "
-        "the schema. After the tool succeeds, continue to the final answer. Treat this "
-        "block as scratch work scoped to the current turn: on later turns, do not quote "
+        "the schema. After the tool succeeds, write the normal user-facing final answer. "
+        "Treat this block as scratch work scoped to the current turn: on later turns, do not quote "
         "it, carry its speculative claims forward, or treat it as authoritative memory "
         "unless the user explicitly asks you to revisit it. Prefer the user's messages "
         "and final answers as the durable conversation record."
@@ -356,12 +360,12 @@ TOOL = {
             },
             "effort": {
                 "type": "string",
-                "enum": ["low", "medium", "high", "max"],
+                "enum": ["low", "medium", "high"],
                 "description": (
-                    "Reasoning effort for this turn's block. This sets the block's token "
-                    "budget: low is about 150 tokens, medium about 600, high about 2000, "
-                    "and max about 6000. These are soft generation targets rather than "
-                    "server-enforced limits."
+                    "Approximate token band for this turn's block: low may be brief and "
+                    "is up to 500 tokens; medium is over 700 and up to 1000; high is over "
+                    "1200 and up to 2000. These are "
+                    "prompt-level targets rather than server-enforced limits."
                 ),
             },
         },
@@ -422,7 +426,7 @@ def openapi(base):
                                   "description": TOOL["inputSchema"]["properties"]["style"]["description"]},
                         "thinking": {"type": "string",
                                      "description": TOOL["inputSchema"]["properties"]["thinking"]["description"]},
-                        "effort": {"type": "string", "enum": ["low", "medium", "high", "max"],
+                        "effort": {"type": "string", "enum": ["low", "medium", "high"],
                                    "description": TOOL["inputSchema"]["properties"]["effort"]["description"]},
                     },
                 }}}},
