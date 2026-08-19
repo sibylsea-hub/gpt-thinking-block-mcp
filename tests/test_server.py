@@ -127,7 +127,15 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("#a4cdd1", html)
         self.assertIn("#cbdbe1", html)
         self.assertIn('id="skin"', html)
-        self.assertIn("v2.html", server.WIDGET_URI)
+        self.assertIn("SKIN ·", html)
+        self.assertIn("v4.html", server.WIDGET_URI)
+        self.assertIn("event.detail.globals", html)
+        self.assertIn("Object.assign({}, bridge", html)
+        self.assertIn("notifyIntrinsicHeight", html)
+        self.assertIn("ResizeObserver", html)
+        self.assertIn("lastMeasuredHeight", html)
+        self.assertIn("api.maxHeight", html)
+        self.assertIn('data-scrollable="true"', html)
 
     def test_unknown_resource_returns_error(self):
         response = server.handle({

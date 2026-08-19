@@ -27,7 +27,7 @@ CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true"
 BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
 
 PROTOCOL_FALLBACK = "2025-06-18"
-WIDGET_URI = "ui://widget/gpt-thinking-block-v2.html"
+WIDGET_URI = "ui://widget/gpt-thinking-block-v4.html"
 WIDGET_MIME = "text/html;profile=mcp-app"
 
 
@@ -293,6 +293,11 @@ WIDGET_HTML = r"""<!doctype html>
     }
     .card[data-collapsed="true"] .content { display: none; }
     .card[data-collapsed="true"] .chevron { transform: rotate(45deg); }
+    .content[data-scrollable="true"] {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
     @media (prefers-reduced-motion: no-preference) {
       .chevron { transition: transform 140ms ease; }
     }
@@ -330,19 +335,52 @@ WIDGET_HTML = r"""<!doctype html>
   <script>
     const card = document.getElementById("card");
     const toggle = document.getElementById("toggle");
+    const content = document.getElementById("thinking-content");
+    let heightFrame = 0;
+    let lastMeasuredHeight = -1;
+
+    function requestIntrinsicHeight(force = false) {
+      const host = window.openai || {};
+      if (typeof host.notifyIntrinsicHeight !== "function") return;
+      cancelAnimationFrame(heightFrame);
+      heightFrame = requestAnimationFrame(() => {
+        const measuredHeight = Math.ceil(document.documentElement.scrollHeight);
+        if (!force && measuredHeight === lastMeasuredHeight) return;
+        lastMeasuredHeight = measuredHeight;
+        try { host.notifyIntrinsicHeight(); } catch (_) {}
+      });
+    }
+
+    function applyHostHeightLimit(api) {
+      const maxHeight = Number(api.maxHeight);
+      if (!Number.isFinite(maxHeight) || maxHeight <= 0) {
+        content.style.maxHeight = "";
+        delete content.dataset.scrollable;
+        return;
+      }
+      const chromeHeight = toggle.getBoundingClientRect().height + 58;
+      content.style.maxHeight = Math.max(180, Math.floor(maxHeight - chromeHeight)) + "px";
+      content.dataset.scrollable = "true";
+    }
 
     function setCollapsed(collapsed) {
       card.dataset.collapsed = collapsed ? "true" : "false";
       toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
       toggle.title = collapsed ? "Expand thinking" : "Collapse thinking";
+      requestIntrinsicHeight(true);
     }
 
     toggle.addEventListener("click", () => {
       setCollapsed(card.dataset.collapsed !== "true");
     });
 
-    function render() {
-      const api = window.openai || {};
+    function render(event) {
+      const bridge = window.openai || {};
+      const eventGlobals = event && event.detail && event.detail.globals;
+      // Mobile hosts may publish only the globals that changed. Merge them over
+      // the bridge snapshot instead of replacing the full tool payload.
+      const api = Object.assign({}, bridge,
+        eventGlobals && typeof eventGlobals === "object" ? eventGlobals : {});
       const input = api.toolInput || {};
       const output = api.toolOutput || {};
       const responseMeta = api.toolResponseMetadata || {};
@@ -361,8 +399,13 @@ WIDGET_HTML = r"""<!doctype html>
       document.getElementById("effort").textContent = effort ? "EFFORT · " + effort.toUpperCase() : "";
       document.getElementById("skin").textContent = "SKIN · " + skin.toUpperCase();
       document.getElementById("thinking").textContent = resultMeta.thinking || input.thinking || output.thinking || "Thinking block captured.";
+      applyHostHeightLimit(api);
+      requestIntrinsicHeight(true);
     }
     window.addEventListener("openai:set_globals", render);
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => requestIntrinsicHeight()).observe(document.body);
+    }
     render();
   </script>
 </body>
